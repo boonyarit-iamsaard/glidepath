@@ -25,6 +25,19 @@ First, install the dependencies:
 pnpm install
 ```
 
+## Environment Variables
+
+Each `.env.example` file lists the variables that the app needs. Copy the
+examples, then replace the values:
+
+```bash
+cp .env.example .env
+cp apps/server/.env.example apps/server/.env
+cp apps/web/.env.example apps/web/.env
+```
+
+The web app runs on port 3000. The server runs on port 4000.
+
 ## Database Setup
 
 This project uses PostgreSQL with Drizzle ORM.
@@ -44,8 +57,8 @@ Then, run the development server:
 pnpm run dev
 ```
 
-Open [http://localhost:3001](http://localhost:3001) in your browser to see the web application.
-The API is running at [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000) in your browser to see the web application.
+The API is running at [http://localhost:4000](http://localhost:4000).
 
 ## UI Customization
 

@@ -20,7 +20,7 @@ ENV SKIP_ENV_VALIDATION=
 
 USER node
 
-EXPOSE 3000
+EXPOSE 4000
 
 WORKDIR /app/apps/server
 CMD ["node", "dist/index.mjs"]
