@@ -10,8 +10,8 @@ export function createAuth() {
   return betterAuth({
     database: drizzleAdapter(db, {
       provider: "pg",
-
-      schema: schema,
+      schema,
+      usePlural: true,
     }),
     trustedOrigins: [env.CORS_ORIGIN],
     emailAndPassword: {
@@ -20,6 +20,12 @@ export function createAuth() {
     secret: env.BETTER_AUTH_SECRET,
     baseURL: env.BETTER_AUTH_URL,
     advanced: {
+      database: {
+        // The database owns id generation: every `id` column defaults to
+        // `uuidv7()`. Do not use "uuid" here — that mode makes Better Auth
+        // generate a v4 id itself, and its validation rejects v7 ids.
+        generateId: false,
+      },
       defaultCookieAttributes: {
         sameSite: "none",
         secure: true,
