@@ -1,8 +1,29 @@
 packages:
   - apps/*
   - packages/*
+# strictDepBuilds makes a skipped build a hard failure, not a silent one.
 allowBuilds:
   esbuild: true
+dangerouslyAllowAllBuilds: false
+strictDepBuilds: true
+
+# 3 days.
+minimumReleaseAge: 4320
+
+# Judge only the last 30 days: pre-2023 releases predate provenance and trip this constantly.
+trustPolicy: no-downgrade
+trustPolicyIgnoreAfter: 43200
+
+engineStrict: true
+verifyDepsBeforeRun: true
+verifyStoreIntegrity: true
+
+# Drop this once upstream ships the fix. Scoped to the offending path — a bare
+# esbuild override would drag vite off the range it declares.
+#   esbuild <=0.24.2  GHSA-67mh-4wv8-2f99 (via @esbuild-kit, in drizzle-kit)
+overrides:
+  "@esbuild-kit/core-utils>esbuild": ^0.25.12
+
 catalog:
   dotenv: ^17.4.2
   zod: ^4.4.3
