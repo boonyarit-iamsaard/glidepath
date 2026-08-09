@@ -47,12 +47,32 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
 
-      # --trust-lockfile: the committed lockfile was already verified when authored.
-      - run: pnpm install --frozen-lockfile --trust-lockfile
+      # No --trust-lockfile: CI re-applies minimumReleaseAge and trustPolicy to
+      # every lockfile entry, before any installed tool runs.
+      - run: pnpm install --frozen-lockfile
 
       - run: pnpm run audit
 
       - run: pnpm run ci
 
       - name: Build the server image
-        run: docker build --pull -f apps/server/Dockerfile .
+        run: docker compose build --pull server
+
+      # A build proves the image compiles. Only a run proves the runtime stage
+      # carries every package that dist/index.mjs imports.
+      - name: Smoke test the server image
+        run: |
+          cat > apps/server/.env <<'EOF'
+          BETTER_AUTH_SECRET=throwaway-ci-smoke-test-secret-value
+          BETTER_AUTH_URL=http://localhost:4000
+          CORS_ORIGIN=http://localhost:3000
+          EOF
+          docker compose up --detach --wait --wait-timeout 120 server
+
+      # Logs are diagnostics. They must never stop the cleanup that follows.
+      - name: Collect logs and clean up
+        if: always()
+        run: |
+          docker compose logs --no-color || true
+          docker compose down --volumes || true
+          rm -f apps/server/.env

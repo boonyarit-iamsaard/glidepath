@@ -8,7 +8,7 @@
     "build": "vite build",
     "serve": "vite preview",
     "start": "vite",
-    "types:check": "vite build && tsc --noEmit"
+    "types:check": "tsc --noEmit"
   },
   "dependencies": {
     "@glidepath/env": "workspace:*",

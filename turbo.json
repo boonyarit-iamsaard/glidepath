@@ -13,6 +13,18 @@
     "types:check": {
       "dependsOn": ["^types:check"]
     },
+    "web#build": {
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      // The route tree is a build output too. Without it here, a cache hit on a
+      // clean checkout leaves tsc without the file, because Git ignores it.
+      "outputs": ["dist/**", "src/routeTree.gen.ts"]
+    },
+    "web#types:check": {
+      // `vite build` writes src/routeTree.gen.ts, so tsc needs the build first.
+      // Turbo caches it, so `ci` builds web once.
+      "dependsOn": ["^types:check", "build"]
+    },
     "dev": {
       "cache": false,
       "persistent": true

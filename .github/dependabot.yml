@@ -32,3 +32,13 @@ updates:
     ignore:
       - dependency-name: node
         update-types: [version-update:semver-major]
+
+  # Separate ecosystem from `docker`: it reads docker-compose.yml, not Dockerfiles.
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly
+    # Same rule as the runtime: the major moves when we decide.
+    ignore:
+      - dependency-name: postgres
+        update-types: [version-update:semver-major]
