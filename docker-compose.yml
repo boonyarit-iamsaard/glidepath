@@ -2,6 +2,7 @@ name: glidepath
 
 services:
   server:
+    container_name: glidepath-server
     build:
       context: .
       dockerfile: apps/server/Dockerfile
@@ -29,9 +30,11 @@ services:
       postgres:
         condition: service_healthy
     restart: unless-stopped
+    networks:
+      - glidepath-network
 
   postgres:
-    image: postgres:18
+    image: postgres:18-alpine
     container_name: glidepath-postgres
     environment:
       POSTGRES_DB: glidepath
@@ -40,13 +43,20 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - glidepath_postgres_data:/var/lib/postgresql
+      - glidepath-postgres-data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
     restart: unless-stopped
+    networks:
+      - glidepath-network
 
 volumes:
-  glidepath_postgres_data:
+  glidepath-postgres-data:
+    name: glidepath-postgres-data
+
+networks:
+  glidepath-network:
+    name: glidepath-network
