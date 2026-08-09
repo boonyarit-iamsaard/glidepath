@@ -19,26 +19,28 @@ import {
   useSidebar,
 } from "@glidepath/ui/components/sidebar";
 import { Skeleton } from "@glidepath/ui/components/skeleton";
-import { useNavigate } from "@tanstack/react-router";
 import { BadgeCheckIcon, ChevronsUpDownIcon, LogOutIcon } from "lucide-react";
 
-import { authClient } from "@/lib/auth-client";
+import { authContent } from "../auth-content";
+import type { SessionUser } from "../hooks/use-session";
+import { getInitials } from "../lib/get-initials";
 
-function getInitials(name: string) {
-  return name
-    .split(" ")
-    .map((part) => part.charAt(0))
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
+const content = authContent.navUser;
+
+interface NavUserProps {
+  user: SessionUser | null;
+  isPending: boolean;
+  onSignOut: () => void;
 }
 
-export function NavUser() {
+/**
+ * Sidebar footer menu for the current person. It shows what it gets and
+ * reports the sign-out click to its parent.
+ */
+export function NavUser({ user, isPending, onSignOut }: NavUserProps) {
   const { isMobile } = useSidebar();
-  const navigate = useNavigate();
-  const { data: session, isPending } = authClient.useSession();
 
-  if (isPending || !session) {
+  if (isPending || !user) {
     return (
       <SidebarMenu>
         <SidebarMenuItem>
@@ -48,7 +50,6 @@ export function NavUser() {
     );
   }
 
-  const { user } = session;
   const initials = getInitials(user.name);
 
   return (
@@ -97,26 +98,13 @@ export function NavUser() {
             <DropdownMenuGroup>
               <DropdownMenuItem>
                 <BadgeCheckIcon />
-                Account
+                {content.accountLabel}
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem
-              variant="destructive"
-              onClick={() => {
-                authClient.signOut({
-                  fetchOptions: {
-                    onSuccess: () => {
-                      navigate({
-                        to: "/",
-                      });
-                    },
-                  },
-                });
-              }}
-            >
+            <DropdownMenuItem variant="destructive" onClick={onSignOut}>
               <LogOutIcon />
-              Sign out
+              {content.signOutLabel}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
