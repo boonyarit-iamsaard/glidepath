@@ -15,7 +15,6 @@
       "!**/.nx",
       "!**/dev-dist",
       "!**/.zed",
-      "!**/.vscode",
       "!**/routeTree.gen.ts",
       "!**/src-tauri",
       "!**/.nuxt",

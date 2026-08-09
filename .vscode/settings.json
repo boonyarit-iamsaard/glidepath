@@ -8,7 +8,11 @@
     "source.organizeImports.biome": "explicit"
   },
   "[markdown]": {
-    "files.trimTrailingWhitespace": false
+    "files.trimTrailingWhitespace": false,
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[yaml]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   "[javascript][javascriptreact]": {
     "editor.defaultFormatter": "biomejs.biome"

@@ -95,7 +95,7 @@ For more details, see the guide on [Deploying with Docker Compose](https://www.b
 
 ## Project Structure
 
-```
+```text
 glidepath/
 ├── apps/
 │   ├── web/         # Frontend application (React + TanStack Router)
