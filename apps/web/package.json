@@ -29,7 +29,7 @@
   "devDependencies": {
     "@glidepath/config": "workspace:*",
     "@tanstack/react-router-devtools": "^1.167.0",
-    "@tanstack/router-plugin": "^1.168.23",
+    "@tanstack/router-plugin": "^1.168.26",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
@@ -37,6 +37,6 @@
     "postcss": "^8.5.24",
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
-    "vite": "^8.1.5"
+    "vite": "^8.2.1"
   }
 }
