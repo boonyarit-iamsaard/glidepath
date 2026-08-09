@@ -1,0 +1,3 @@
+{
+  "extends": "@glidepath/config/tsconfig.base.json"
+}

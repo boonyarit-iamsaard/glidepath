@@ -1,0 +1,24 @@
+{
+  "name": "@glidepath/auth",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "scripts": {},
+  "dependencies": {
+    "@glidepath/db": "workspace:*",
+    "@glidepath/env": "workspace:*",
+    "better-auth": "catalog:",
+    "dotenv": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@glidepath/config": "workspace:*",
+    "typescript": "catalog:"
+  }
+}
