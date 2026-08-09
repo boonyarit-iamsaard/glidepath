@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
-    "check-types": "turbo run check-types",
+    "types:check": "turbo run types:check",
     "dev:web": "turbo run dev -F web",
     "dev:server": "turbo run dev -F server",
     "db:push": "turbo run db:push -F @glidepath/db",
@@ -20,12 +20,15 @@
     "db:watch": "docker compose up postgres",
     "db:stop": "docker compose stop postgres",
     "db:down": "docker compose down postgres",
-    "docker:build": "docker compose build",
-    "docker:up": "docker compose up -d --build",
+    "docker:build": "docker compose build --pull",
+    "docker:up": "docker compose up -d --build --pull always",
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f",
-    "check": "biome check --write .",
-    "prepare": "husky"
+    "check": "biome check --write --no-errors-on-unmatched --files-ignore-unknown=true",
+    "ci": "biome ci --no-errors-on-unmatched --files-ignore-unknown=true . && pnpm types:check && pnpm build",
+    "audit": "pnpm audit --audit-level moderate && pnpm audit signatures",
+    "deps:outdated": "pnpm outdated -r",
+    "prepare": "husky || true"
   },
   "dependencies": {
     "@glidepath/env": "workspace:*",
@@ -43,7 +46,7 @@
   },
   "lint-staged": {
     "*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc}": [
-      "biome check --write ."
+      "biome check --no-errors-on-unmatched --files-ignore-unknown=true"
     ]
   },
   "packageManager": "pnpm@11.12.0"

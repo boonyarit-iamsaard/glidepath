@@ -24,6 +24,7 @@
       "!**/.wrangler",
       "!**/.alchemy",
       "!**/.svelte-kit",
+      "!**/.pnpm-store",
       "!**/wrangler.jsonc",
       "!**/.source",
       "!**/convex/_generated"
@@ -31,13 +32,13 @@
   },
   "formatter": {
     "enabled": true,
-    "indentStyle": "tab"
+    "indentStyle": "space"
   },
   "assist": { "actions": { "source": { "organizeImports": "on" } } },
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true,
+      "preset": "recommended",
       "correctness": {
         "useExhaustiveDependencies": "info"
       },
@@ -51,10 +52,19 @@
         }
       },
       "style": {
+        "noEnum": "error",
+        "noNonNullAssertion": "error",
         "noParameterAssign": "error",
         "useAsConstAssertion": "error",
+        "useBlockStatements": "error",
         "useDefaultParameterLast": "error",
-        "useEnumInitializers": "error",
+        "useImportType": {
+          "level": "error",
+          "options": {
+            "style": "separatedType"
+          }
+        },
+        "useNodejsImportProtocol": "error",
         "useSelfClosingElements": "error",
         "useSingleVarDeclarator": "error",
         "noUnusedTemplateLiteral": "error",
