@@ -1,5 +1,4 @@
 FROM node:24-slim AS base
-COPY --from=oven/bun:1 /usr/local/bin/bun /usr/local/bin/bun
 WORKDIR /app
 ENV SKIP_ENV_VALIDATION=1
 
@@ -24,4 +23,4 @@ USER node
 EXPOSE 3000
 
 WORKDIR /app/apps/server
-CMD ["bun", "dist/index.mjs"]
+CMD ["node", "dist/index.mjs"]

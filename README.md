@@ -9,7 +9,7 @@ This project was created with [Better-T-Stack](https://github.com/AmanVarshney01
 - **TailwindCSS** - Utility-first CSS for rapid UI development
 - **Shared UI package** - shadcn/ui primitives live in `packages/ui`
 - **Hono** - Lightweight, performant server framework
-- **Bun** - Runtime environment
+- **Node.js** - Runtime environment
 - **Drizzle** - TypeScript-first ORM
 - **PostgreSQL** - Database engine
 - **Authentication** - Better-Auth

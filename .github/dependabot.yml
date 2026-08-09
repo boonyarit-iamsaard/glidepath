@@ -27,3 +27,8 @@ updates:
     directory: /apps/server
     schedule:
       interval: weekly
+    # The runtime major moves when we decide, not when a tag appears. Patch and
+    # minor still arrive weekly. Bump `FROM`, `.nvmrc`, and `engines` together.
+    ignore:
+      - dependency-name: node
+        update-types: [version-update:semver-major]
