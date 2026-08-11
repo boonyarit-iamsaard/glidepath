@@ -4,30 +4,34 @@ import { UserMenuContainer } from "@/features/auth";
 
 import { ModeToggle } from "./mode-toggle";
 
-export default function Header() {
-  const links = [
-    { to: "/", label: "Home" },
-    { to: "/dashboard", label: "Dashboard" },
-  ] as const;
+const LINKS = [{ to: "/dashboard", label: "Dashboard" }] as const;
 
+export function Header() {
   return (
-    <div>
-      <div className="flex flex-row items-center justify-between px-2 py-1">
-        <nav className="flex gap-4 text-lg">
-          {links.map(({ to, label }) => {
-            return (
-              <Link key={to} to={to}>
-                {label}
-              </Link>
-            );
-          })}
+    <header className="sticky top-0 z-50 border-border border-b bg-background">
+      <div className="mx-auto flex h-14 w-full max-w-2xl items-center gap-6 px-6">
+        <Link
+          to="/"
+          className="font-heading font-semibold text-sm tracking-tight"
+        >
+          glidepath
+        </Link>
+        <nav className="flex items-center gap-4">
+          {LINKS.map(({ to, label }) => (
+            <Link
+              key={to}
+              to={to}
+              className="text-muted-foreground text-sm transition-colors hover:text-foreground data-[status=active]:text-foreground"
+            >
+              {label}
+            </Link>
+          ))}
         </nav>
-        <div className="flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-2">
           <ModeToggle />
           <UserMenuContainer />
         </div>
       </div>
-      <hr />
-    </div>
+    </header>
   );
 }
