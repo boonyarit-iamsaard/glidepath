@@ -44,7 +44,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.6",
+    "@biomejs/biome": "^2.5.8",
     "@glidepath/config": "workspace:*",
     "@types/node": "catalog:",
     "husky": "^9.1.7",
