@@ -13,10 +13,10 @@
   "dependencies": {
     "@glidepath/env": "workspace:*",
     "@glidepath/ui": "workspace:*",
-    "@hookform/resolvers": "^5.5.7",
+    "@hookform/resolvers": "^5.8.0",
     "@tailwindcss/vite": "^4.3.3",
-    "@tanstack/react-form": "^1.33.2",
-    "@tanstack/react-router": "^1.170.21",
+    "@tanstack/react-form": "^1.33.5",
+    "@tanstack/react-router": "^1.170.27",
     "better-auth": "catalog:",
     "dotenv": "catalog:",
     "lucide-react": "catalog:",
