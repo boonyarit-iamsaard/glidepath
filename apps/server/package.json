@@ -9,13 +9,13 @@
     "start": "node dist/index.mjs"
   },
   "dependencies": {
-    "@hono/node-server": "^2.0.12",
+    "@hono/node-server": "^2.1.1",
     "@glidepath/auth": "workspace:*",
     "@glidepath/db": "workspace:*",
     "@glidepath/env": "workspace:*",
     "better-auth": "catalog:",
     "dotenv": "catalog:",
-    "hono": "^4.12.32",
+    "hono": "^4.13.2",
     "zod": "catalog:"
   },
   "devDependencies": {
