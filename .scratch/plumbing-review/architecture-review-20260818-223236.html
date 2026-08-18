@@ -1,0 +1,522 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Architecture review — glidepath plumbing</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module">
+      import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+
+      mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "loose", flowchart: { curve: "basis" } });
+    </script>
+    <style>
+      .seam { stroke-dasharray: 5 4; }
+      .deep { background: linear-gradient(135deg, #0f172a, #1e293b); }
+      .hatch {
+        background-image: repeating-linear-gradient(45deg, #e7e5e4 0 6px, #f5f5f4 6px 12px);
+      }
+      pre.mermaid { text-align: center; }
+    </style>
+  </head>
+  <body class="bg-stone-50 text-slate-900 font-sans antialiased">
+    <main class="max-w-5xl mx-auto px-6 py-12 space-y-14">
+
+      <header class="space-y-6 border-b border-stone-300 pb-8">
+        <div>
+          <h1 class="font-serif text-4xl tracking-tight">Architecture review — glidepath</h1>
+          <p class="mt-1 text-sm text-slate-500">Project plumbing · 18 August 2026 · six candidates</p>
+        </div>
+        <div class="flex flex-wrap gap-x-8 gap-y-3 text-xs uppercase tracking-wider text-slate-600">
+          <span class="flex items-center gap-2"><span class="inline-block h-4 w-7 border border-slate-500 bg-white"></span> module</span>
+          <span class="flex items-center gap-2">
+            <svg width="28" height="10"><title>dashed line: a seam</title><line class="seam" x1="0" y1="5" x2="28" y2="5" stroke="#475569" stroke-width="2"/></svg> seam
+          </span>
+          <span class="flex items-center gap-2">
+            <svg width="28" height="10"><title>red arrow: leakage across a seam</title><line x1="0" y1="5" x2="24" y2="5" stroke="#dc2626" stroke-width="2"/><path d="M24 1 L28 5 L24 9 Z" fill="#dc2626"/></svg> leakage
+          </span>
+          <span class="flex items-center gap-2"><span class="inline-block h-4 w-7 deep border-2 border-slate-900"></span> deep module</span>
+          <span class="flex items-center gap-2"><span class="inline-block h-4 w-7 hatch border border-stone-400"></span> inert config</span>
+        </div>
+        <p class="text-sm text-slate-600 max-w-2xl">No <code class="font-mono text-xs">CONTEXT.md</code> and no <code class="font-mono text-xs">docs/adr/</code> exist yet, so no candidate below contradicts a recorded decision. Domain terms are taken from the workspace layout itself.</p>
+      </header>
+
+      <section id="candidates" class="space-y-14">
+
+        <!-- ============ CANDIDATE 1 ============ -->
+        <article id="c1" class="space-y-5">
+          <div class="flex flex-wrap items-baseline gap-3">
+            <h2 class="font-serif text-2xl">1 · Give the server a composition root</h2>
+            <span class="rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-medium uppercase tracking-wider text-emerald-800">Strong</span>
+            <span class="rounded-full bg-slate-200 px-3 py-0.5 text-xs uppercase tracking-wider text-slate-700">in-process</span>
+          </div>
+
+          <ul class="font-mono text-sm text-slate-600 space-y-0.5">
+            <li>packages/db/src/index.ts:10</li>
+            <li>packages/auth/src/index.ts:39</li>
+            <li>packages/env/src/server.ts:5</li>
+            <li>apps/server/src/index.ts:1–35</li>
+            <li>apps/server/Dockerfile:7</li>
+          </ul>
+
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 bg-white p-4">
+              <p class="mb-2 text-xs uppercase tracking-wider text-slate-500">Before — importing is instantiating</p>
+              <pre class="mermaid">
+flowchart TD
+  S["apps/server<br/>index.ts"] -->|import| A["@glidepath/auth<br/>export const auth = createAuth()"]
+  A -->|import| D["@glidepath/db<br/>export const db = createDb()"]
+  A -->|calls again| D2["createDb() #2"]
+  D -->|import| E["@glidepath/env/server<br/>validates on load"]
+  D -.unused pool.-> P1[("pg Pool #1")]
+  D2 --> P2[("pg Pool #2")]
+  E -.escape hatch.-> K["SKIP_ENV_VALIDATION=1"]
+  classDef leak stroke:#dc2626,stroke-width:2px,color:#dc2626;
+  classDef hatch fill:#fef3c7,stroke:#d97706;
+  class D,P1,D2 leak
+  class K hatch
+              </pre>
+            </div>
+
+            <div class="rounded-lg border border-slate-200 bg-white p-4">
+              <p class="mb-2 text-xs uppercase tracking-wider text-slate-500">After — one seam, called once</p>
+              <div class="relative h-[290px]">
+                <div class="absolute inset-x-0 top-0 rounded border border-slate-400 bg-white px-3 py-2 text-center">
+                  <p class="text-xs uppercase tracking-wider text-slate-500">apps/server/index.ts</p>
+                  <p class="font-mono text-xs text-slate-800">createServer(readEnv()).listen()</p>
+                </div>
+                <svg class="absolute left-1/2 top-[58px] h-8 w-4 -translate-x-1/2" viewBox="0 0 16 32"><title>arrow: the app calls createServer</title>
+                  <line x1="8" y1="0" x2="8" y2="24" stroke="#475569" stroke-width="2"/>
+                  <path d="M4 24 L8 32 L12 24 Z" fill="#475569"/>
+                </svg>
+                <svg class="absolute inset-x-0 top-[96px] h-2 w-full"><title>the seam</title><line class="seam" x1="0" y1="4" x2="100%" y2="4" stroke="#475569" stroke-width="2"/></svg>
+                <p class="absolute right-0 top-[76px] text-[10px] uppercase tracking-wider text-slate-500">seam: createServer(config)</p>
+                <div class="deep absolute inset-x-0 bottom-0 top-[112px] rounded border-2 border-slate-900 p-3">
+                  <p class="text-xs uppercase tracking-wider text-slate-400">server module — implementation</p>
+                  <div class="mt-3 space-y-1.5 opacity-60">
+                    <div class="rounded border border-slate-600 px-2 py-1 font-mono text-[11px] text-slate-300">createDb(config) — once</div>
+                    <div class="rounded border border-slate-600 px-2 py-1 font-mono text-[11px] text-slate-300">createAuth(db, config)</div>
+                    <div class="rounded border border-slate-600 px-2 py-1 font-mono text-[11px] text-slate-300">cors · logger · routes</div>
+                  </div>
+                  <p class="mt-3 text-[11px] text-emerald-300">returns app — does not listen</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid md:grid-cols-2 gap-6 text-sm">
+            <div>
+              <p class="text-xs uppercase tracking-wider text-slate-500">Problem</p>
+              <p class="mt-1">Every module instantiates itself at import, so nothing can be loaded without live configuration — and <code class="font-mono text-xs">@glidepath/auth</code> builds a second connection pool while the first sits unused.</p>
+            </div>
+            <div>
+              <p class="text-xs uppercase tracking-wider text-slate-500">Solution</p>
+              <p class="mt-1">Delete the module-level <code class="font-mono text-xs">db</code> and <code class="font-mono text-xs">auth</code> constants. The server app reads configuration once and passes it down; <code class="font-mono text-xs">createServer</code> returns the app and a separate line starts it.</p>
+            </div>
+          </div>
+
+          <ul class="grid sm:grid-cols-2 gap-x-8 gap-y-1 text-sm text-slate-700">
+            <li>· Leverage: one interface, whole runtime</li>
+            <li>· Locality: configuration read in one place</li>
+            <li>· Second pool disappears</li>
+            <li>· <code class="font-mono text-xs">SKIP_ENV_VALIDATION</code> stops being load-bearing</li>
+            <li>· First real test surface in repo</li>
+            <li>· Two adapters justify the db seam</li>
+          </ul>
+        </article>
+
+        <!-- ============ CANDIDATE 2 ============ -->
+        <article id="c2" class="space-y-5 border-t border-stone-200 pt-12">
+          <div class="flex flex-wrap items-baseline gap-3">
+            <h2 class="font-serif text-2xl">2 · Put every package behind one compiler-policy seam</h2>
+            <span class="rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-medium uppercase tracking-wider text-emerald-800">Strong</span>
+            <span class="rounded-full bg-slate-200 px-3 py-0.5 text-xs uppercase tracking-wider text-slate-700">in-process</span>
+          </div>
+
+          <ul class="font-mono text-sm text-slate-600 space-y-0.5">
+            <li>apps/web/tsconfig.json:1–17</li>
+            <li>packages/config/tsconfig.base.json</li>
+          </ul>
+
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 bg-white p-4">
+              <p class="mb-3 text-xs uppercase tracking-wider text-slate-500">Before — five extend, one re-declares</p>
+              <div class="space-y-2">
+                <div class="rounded border border-slate-400 bg-slate-50 px-3 py-2 text-center font-mono text-xs">@glidepath/config/tsconfig.base.json</div>
+                <div class="grid grid-cols-4 gap-1.5 text-center">
+                  <div class="rounded border border-slate-300 bg-white py-1.5 text-[10px] uppercase tracking-wide">env</div>
+                  <div class="rounded border border-slate-300 bg-white py-1.5 text-[10px] uppercase tracking-wide">db</div>
+                  <div class="rounded border border-slate-300 bg-white py-1.5 text-[10px] uppercase tracking-wide">auth</div>
+                  <div class="rounded border border-slate-300 bg-white py-1.5 text-[10px] uppercase tracking-wide">ui</div>
+                </div>
+                <div class="rounded border border-slate-300 bg-white py-1.5 text-center text-[10px] uppercase tracking-wide">apps/server</div>
+                <div class="mt-4 rounded border-2 border-red-500 bg-red-50 p-3">
+                  <p class="text-[10px] uppercase tracking-wider text-red-700">apps/web — own copy, weaker rules</p>
+                  <ul class="mt-2 space-y-0.5 font-mono text-[11px] text-red-800">
+                    <li>✗ noUncheckedIndexedAccess</li>
+                    <li>✗ noUnusedLocals / noUnusedParameters</li>
+                    <li>✗ verbatimModuleSyntax</li>
+                    <li>✗ isolatedModules</li>
+                    <li>✗ noFallthroughCasesInSwitch</li>
+                    <li>✗ forceConsistentCasingInFileNames</li>
+                  </ul>
+                  <p class="mt-2 text-[11px] text-red-700">+ duplicate alias for <code>@glidepath/ui/*</code></p>
+                </div>
+              </div>
+            </div>
+
+            <div class="rounded-lg border border-slate-200 bg-white p-4">
+              <p class="mb-3 text-xs uppercase tracking-wider text-slate-500">After — one interface, six consumers</p>
+              <div class="space-y-2">
+                <div class="deep rounded border-2 border-slate-900 px-3 py-4 text-center">
+                  <p class="font-mono text-xs text-white">@glidepath/config/tsconfig.base.json</p>
+                  <p class="mt-1 text-[10px] uppercase tracking-wider text-slate-400">the only compiler policy</p>
+                </div>
+                <svg class="h-6 w-full"><title>the seam</title><line class="seam" x1="0" y1="12" x2="100%" y2="12" stroke="#475569" stroke-width="2"/></svg>
+                <div class="grid grid-cols-3 gap-1.5 text-center">
+                  <div class="rounded border border-slate-300 bg-white py-1.5 text-[10px] uppercase tracking-wide">env</div>
+                  <div class="rounded border border-slate-300 bg-white py-1.5 text-[10px] uppercase tracking-wide">db</div>
+                  <div class="rounded border border-slate-300 bg-white py-1.5 text-[10px] uppercase tracking-wide">auth</div>
+                  <div class="rounded border border-slate-300 bg-white py-1.5 text-[10px] uppercase tracking-wide">ui</div>
+                  <div class="rounded border border-slate-300 bg-white py-1.5 text-[10px] uppercase tracking-wide">server</div>
+                  <div class="rounded border-2 border-emerald-600 bg-emerald-50 py-1.5 text-[10px] uppercase tracking-wide text-emerald-800">web</div>
+                </div>
+                <p class="pt-3 text-center text-[11px] text-slate-500">web keeps only what is genuinely its own:<br/><code class="font-mono">jsx</code>, <code class="font-mono">types: ["vite/client"]</code>, <code class="font-mono">@/*</code></p>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid md:grid-cols-2 gap-6 text-sm">
+            <div>
+              <p class="text-xs uppercase tracking-wider text-slate-500">Problem</p>
+              <p class="mt-1">The largest app in the workspace does not extend the shared base, so it is checked under weaker rules than every package it imports — and its hand-written path alias competes with the <code class="font-mono text-xs">exports</code> map for the same module.</p>
+            </div>
+            <div>
+              <p class="text-xs uppercase tracking-wider text-slate-500">Solution</p>
+              <p class="mt-1">Extend <code class="font-mono text-xs">@glidepath/config</code> from <code class="font-mono text-xs">apps/web</code> and keep only the web-specific options. Drop the duplicate <code class="font-mono text-xs">@glidepath/ui/*</code> alias.</p>
+            </div>
+          </div>
+
+          <ul class="grid sm:grid-cols-2 gap-x-8 gap-y-1 text-sm text-slate-700">
+            <li>· Locality: one file sets policy</li>
+            <li>· Leverage: one change, six packages</li>
+            <li>· One resolution seam, not two</li>
+            <li>· <code class="font-mono text-xs">config</code> stops being shallow</li>
+          </ul>
+        </article>
+
+        <!-- ============ CANDIDATE 3 ============ -->
+        <article id="c3" class="space-y-5 border-t border-stone-200 pt-12">
+          <div class="flex flex-wrap items-baseline gap-3">
+            <h2 class="font-serif text-2xl">3 · Reconcile the task graph with the packages' build config</h2>
+            <span class="rounded-full bg-amber-100 px-3 py-0.5 text-xs font-medium uppercase tracking-wider text-amber-800">Worth exploring</span>
+            <span class="rounded-full bg-slate-200 px-3 py-0.5 text-xs uppercase tracking-wider text-slate-700">in-process</span>
+          </div>
+
+          <ul class="font-mono text-sm text-slate-600 space-y-0.5">
+            <li>turbo.json:5–15</li>
+            <li>packages/db/tsconfig.json · packages/auth/tsconfig.json</li>
+            <li>packages/{env,db,auth,config}/package.json — no scripts</li>
+          </ul>
+
+          <div class="rounded-lg border border-slate-200 bg-white p-4">
+            <p class="mb-3 text-xs uppercase tracking-wider text-slate-500">Before — what <code class="font-mono">turbo run types:check</code> actually runs</p>
+            <div class="space-y-1.5">
+              <div class="flex items-center gap-3"><span class="w-40 font-mono text-xs">@glidepath/env</span><span class="hatch h-7 flex-1 rounded border border-stone-400 px-2 text-[11px] leading-7 text-stone-600">NONEXISTENT — no script</span></div>
+              <div class="flex items-center gap-3"><span class="w-40 font-mono text-xs">@glidepath/db</span><span class="hatch h-7 flex-1 rounded border border-stone-400 px-2 text-[11px] leading-7 text-stone-600">NONEXISTENT — yet declares <code>composite</code>, <code>declaration</code>, <code>outDir: dist</code></span></div>
+              <div class="flex items-center gap-3"><span class="w-40 font-mono text-xs">@glidepath/auth</span><span class="hatch h-7 flex-1 rounded border border-stone-400 px-2 text-[11px] leading-7 text-stone-600">NONEXISTENT — same inert build config</span></div>
+              <div class="flex items-center gap-3"><span class="w-40 font-mono text-xs">@glidepath/config</span><span class="hatch h-7 flex-1 rounded border border-stone-400 px-2 text-[11px] leading-7 text-stone-600">NONEXISTENT</span></div>
+              <div class="flex items-center gap-3"><span class="w-40 font-mono text-xs">@glidepath/ui</span><span class="h-7 flex-1 rounded border border-emerald-500 bg-emerald-50 px-2 text-[11px] leading-7 text-emerald-800">tsc --noEmit</span></div>
+              <div class="flex items-center gap-3"><span class="w-40 font-mono text-xs">server</span><span class="h-7 flex-1 rounded border border-emerald-500 bg-emerald-50 px-2 text-[11px] leading-7 text-emerald-800">tsc -b — no <code>references</code>, so it checks env/db/auth by import</span></div>
+              <div class="flex items-center gap-3"><span class="w-40 font-mono text-xs">web</span><span class="h-7 flex-1 rounded border border-emerald-500 bg-emerald-50 px-2 text-[11px] leading-7 text-emerald-800">tsc --noEmit</span></div>
+            </div>
+            <p class="mt-4 border-l-2 border-red-500 pl-3 text-xs text-slate-700">
+              Three packages carry build config for a build no task invokes. <code class="font-mono">^build</code> in <code class="font-mono">turbo.json</code> resolves to nothing.
+              <code class="font-mono">packages/env/src/web.ts</code> is only ever checked inside <span class="text-red-700">web's weaker program</span> — its own tsconfig never governs its own files.
+            </p>
+          </div>
+
+          <div class="rounded-lg border border-slate-200 bg-white p-4">
+            <p class="mb-2 text-xs uppercase tracking-wider text-slate-500">After — pick one, then make the config say so</p>
+            <pre class="mermaid">
+flowchart LR
+  subgraph A["Option A — packages stay source-only"]
+    A1["drop composite / declaration / outDir"] --> A2["add types:check per package"]
+    A2 --> A3["turbo checks each module on its own terms"]
+  end
+  subgraph B["Option B — packages become built modules"]
+    B1["add build scripts"] --> B2["add tsconfig references"]
+    B2 --> B3["^build stops being a no-op"]
+  end
+  classDef deep fill:#0f172a,stroke:#0f172a,color:#fff;
+  class A3,B3 deep
+            </pre>
+          </div>
+
+          <div class="grid md:grid-cols-2 gap-6 text-sm">
+            <div>
+              <p class="text-xs uppercase tracking-wider text-slate-500">Problem</p>
+              <p class="mt-1">The build config describes a compiled module; the task graph runs a source-only one. Neither reading is wrong, but both are written down, so the plumbing tells two stories.</p>
+            </div>
+            <div>
+              <p class="text-xs uppercase tracking-wider text-slate-500">Solution</p>
+              <p class="mt-1">Option A is the smaller move and fits the current setup: the packages are consumed as source and bundled by <code class="font-mono text-xs">tsdown</code>. Delete the inert options, add a <code class="font-mono text-xs">types:check</code> script to each package.</p>
+            </div>
+          </div>
+
+          <ul class="grid sm:grid-cols-2 gap-x-8 gap-y-1 text-sm text-slate-700">
+            <li>· Every module checked on own terms</li>
+            <li>· Config stops describing absent behaviour</li>
+            <li>· <code class="font-mono text-xs">env/web.ts</code> gets strict rules</li>
+            <li>· Turbo caching becomes truthful</li>
+          </ul>
+        </article>
+
+        <!-- ============ CANDIDATE 4 ============ -->
+        <article id="c4" class="space-y-5 border-t border-stone-200 pt-12">
+          <div class="flex flex-wrap items-baseline gap-3">
+            <h2 class="font-serif text-2xl">4 · One configuration seam for <code class="font-mono text-xl">DATABASE_URL</code></h2>
+            <span class="rounded-full bg-amber-100 px-3 py-0.5 text-xs font-medium uppercase tracking-wider text-amber-800">Worth exploring</span>
+            <span class="rounded-full bg-slate-200 px-3 py-0.5 text-xs uppercase tracking-wider text-slate-700">local-substitutable</span>
+          </div>
+
+          <ul class="font-mono text-sm text-slate-600 space-y-0.5">
+            <li>packages/db/drizzle.config.ts:4–13</li>
+            <li>packages/env/src/server.ts:7</li>
+            <li>docker-compose.yml:16</li>
+          </ul>
+
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 bg-white p-4">
+              <p class="mb-2 text-xs uppercase tracking-wider text-slate-500">Before — three routes to one fact</p>
+              <pre class="mermaid">
+flowchart TD
+  F[("apps/server/.env")]
+  F --> E["@glidepath/env/server<br/>z.string().min(1)"]
+  F -.dotenv, relative path.-> DK["drizzle.config.ts<br/>process.env.DATABASE_URL || ''"]
+  C["docker-compose.yml<br/>literal URL"] --> R["container runtime"]
+  E --> DB["createDb()"]
+  DK --> KIT["drizzle-kit push/migrate"]
+  classDef leak stroke:#dc2626,stroke-width:2px,color:#dc2626;
+  class DK leak
+              </pre>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-white p-4">
+              <p class="mb-2 text-xs uppercase tracking-wider text-slate-500">After — everything crosses the env seam</p>
+              <pre class="mermaid">
+flowchart TD
+  F[("apps/server/.env")] --> E["@glidepath/env/server"]
+  C["docker-compose.yml"] --> E
+  E --> DB["createDb(config)"]
+  E --> KIT["drizzle.config.ts"]
+  classDef deep fill:#0f172a,stroke:#0f172a,color:#fff;
+  class E deep
+              </pre>
+              <p class="mt-3 text-center text-[11px] text-slate-500">missing value fails once, loudly, in one module</p>
+            </div>
+          </div>
+
+          <div class="grid md:grid-cols-2 gap-6 text-sm">
+            <div>
+              <p class="text-xs uppercase tracking-wider text-slate-500">Problem</p>
+              <p class="mt-1"><code class="font-mono text-xs">drizzle.config.ts</code> reaches around the env module: it loads <code class="font-mono text-xs">../../apps/server/.env</code> by relative path and turns a missing URL into <code class="font-mono text-xs">""</code>, so a misconfigured migration fails deep inside the driver instead of at the seam.</p>
+            </div>
+            <div>
+              <p class="text-xs uppercase tracking-wider text-slate-500">Solution</p>
+              <p class="mt-1">Import <code class="font-mono text-xs">env</code> in <code class="font-mono text-xs">drizzle.config.ts</code> and delete the <code class="font-mono text-xs">dotenv</code> call and the <code class="font-mono text-xs">|| ""</code>. Have compose derive its URL from the same variables rather than restating them.</p>
+            </div>
+          </div>
+
+          <ul class="grid sm:grid-cols-2 gap-x-8 gap-y-1 text-sm text-slate-700">
+            <li>· Locality: one module owns configuration</li>
+            <li>· Silent empty-string fallback disappears</li>
+            <li>· Relative path to another app dies</li>
+            <li>· Failure moves to the seam</li>
+          </ul>
+        </article>
+
+        <!-- ============ CANDIDATE 5 ============ -->
+        <article id="c5" class="space-y-5 border-t border-stone-200 pt-12">
+          <div class="flex flex-wrap items-baseline gap-3">
+            <h2 class="font-serif text-2xl">5 · Move the smoke test out of the workflow file</h2>
+            <span class="rounded-full bg-amber-100 px-3 py-0.5 text-xs font-medium uppercase tracking-wider text-amber-800">Worth exploring</span>
+            <span class="rounded-full bg-slate-200 px-3 py-0.5 text-xs uppercase tracking-wider text-slate-700">ports &amp; adapters</span>
+          </div>
+
+          <ul class="font-mono text-sm text-slate-600 space-y-0.5">
+            <li>.github/workflows/ci.yml:58–78</li>
+            <li>package.json:32 — the <code>ci</code> script</li>
+            <li>apps/server/.env.example</li>
+          </ul>
+
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 bg-white p-4">
+              <p class="mb-3 text-xs uppercase tracking-wider text-slate-500">Before — two different <code class="font-mono">ci</code></p>
+              <div class="space-y-3">
+                <div class="rounded border border-slate-300 p-3">
+                  <p class="text-[10px] uppercase tracking-wider text-slate-500">local · pnpm run ci</p>
+                  <div class="mt-2 space-y-1">
+                    <div class="h-5 rounded bg-slate-200 px-2 text-[11px] leading-5">biome · prettier · markdownlint</div>
+                    <div class="h-5 rounded bg-slate-200 px-2 text-[11px] leading-5">types:check · build</div>
+                  </div>
+                </div>
+                <div class="rounded border-2 border-red-400 p-3">
+                  <p class="text-[10px] uppercase tracking-wider text-red-700">github only · not runnable locally</p>
+                  <div class="mt-2 space-y-1">
+                    <div class="h-5 rounded bg-red-100 px-2 text-[11px] leading-5 text-red-800">docker compose build</div>
+                    <div class="h-5 rounded bg-red-100 px-2 text-[11px] leading-5 text-red-800">heredoc writes a throwaway .env</div>
+                    <div class="h-5 rounded bg-red-100 px-2 text-[11px] leading-5 text-red-800">compose up --wait</div>
+                    <div class="h-5 rounded bg-red-100 px-2 text-[11px] leading-5 text-red-800">logs · down · rm .env</div>
+                  </div>
+                  <p class="mt-2 text-[11px] text-red-700">YAML holds the only knowledge of what the server needs to boot — duplicating <code class="font-mono">.env.example</code>.</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="rounded-lg border border-slate-200 bg-white p-4">
+              <p class="mb-3 text-xs uppercase tracking-wider text-slate-500">After — one module, two callers</p>
+              <div class="relative">
+                <div class="deep rounded border-2 border-slate-900 p-4">
+                  <p class="text-xs uppercase tracking-wider text-slate-400">scripts/smoke-server — implementation</p>
+                  <div class="mt-3 space-y-1 opacity-60">
+                    <div class="rounded border border-slate-600 px-2 py-1 text-[11px] text-slate-300">seed env from .env.example</div>
+                    <div class="rounded border border-slate-600 px-2 py-1 text-[11px] text-slate-300">build · up --wait · probe /</div>
+                    <div class="rounded border border-slate-600 px-2 py-1 text-[11px] text-slate-300">logs · down · clean up</div>
+                  </div>
+                </div>
+                <svg class="my-2 h-4 w-full"><title>the seam</title><line class="seam" x1="0" y1="8" x2="100%" y2="8" stroke="#475569" stroke-width="2"/></svg>
+                <p class="mb-2 text-center text-[10px] uppercase tracking-wider text-slate-500">seam: pnpm run smoke</p>
+                <div class="grid grid-cols-2 gap-2 text-center">
+                  <div class="rounded border border-emerald-500 bg-emerald-50 py-2 text-[11px] text-emerald-800">a maintainer, locally</div>
+                  <div class="rounded border border-emerald-500 bg-emerald-50 py-2 text-[11px] text-emerald-800">ci.yml — one line</div>
+                </div>
+                <p class="mt-3 text-center text-[11px] text-slate-500">two adapters make the seam real</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid md:grid-cols-2 gap-6 text-sm">
+            <div>
+              <p class="text-xs uppercase tracking-wider text-slate-500">Problem</p>
+              <p class="mt-1">The only behavioural check in the repo lives in workflow YAML, so a maintainer cannot run it, and the boot-time configuration is written down twice.</p>
+            </div>
+            <div>
+              <p class="text-xs uppercase tracking-wider text-slate-500">Solution</p>
+              <p class="mt-1">Move the steps into one script the workflow calls. Read the throwaway values from <code class="font-mono text-xs">.env.example</code> instead of restating them in the heredoc.</p>
+            </div>
+          </div>
+
+          <ul class="grid sm:grid-cols-2 gap-x-8 gap-y-1 text-sm text-slate-700">
+            <li>· Local and CI run the same thing</li>
+            <li>· Locality: boot config stated once</li>
+            <li>· Workflow shrinks to one call</li>
+            <li>· Interface is the test surface</li>
+          </ul>
+        </article>
+
+        <!-- ============ CANDIDATE 6 ============ -->
+        <article id="c6" class="space-y-5 border-t border-stone-200 pt-12">
+          <div class="flex flex-wrap items-baseline gap-3">
+            <h2 class="font-serif text-2xl">6 · Split the env module by environment</h2>
+            <span class="rounded-full bg-slate-200 px-3 py-0.5 text-xs font-medium uppercase tracking-wider text-slate-700">Speculative</span>
+            <span class="rounded-full bg-slate-200 px-3 py-0.5 text-xs uppercase tracking-wider text-slate-700">in-process</span>
+          </div>
+
+          <ul class="font-mono text-sm text-slate-600 space-y-0.5">
+            <li>packages/env/src/web.ts:10</li>
+            <li>packages/env/src/vite-env.d.ts:7–10</li>
+          </ul>
+
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 bg-white p-4">
+              <p class="mb-3 text-xs uppercase tracking-wider text-slate-500">Before — interface as wide as implementation</p>
+              <div class="flex h-[240px] items-end gap-6 px-4">
+                <div class="flex-1">
+                  <div class="rounded-t border-2 border-red-400 bg-red-50 px-2 py-2 text-center text-[11px] text-red-800" style="height:120px">
+                    interface<br/><span class="text-[10px]">zod schema<br/>+ vite-env.d.ts<br/>+ SKIP_ENV_VALIDATION</span>
+                  </div>
+                  <div class="rounded-b border-2 border-t-0 border-slate-400 bg-slate-100 px-2 py-2 text-center text-[11px]" style="height:100px">
+                    implementation<br/><span class="text-[10px]">one createEnv call</span>
+                  </div>
+                  <p class="mt-2 text-center text-[10px] uppercase tracking-wider text-slate-500">env/web — shallow</p>
+                </div>
+                <div class="flex-1 text-[11px] text-slate-600">
+                  <p class="border-l-2 border-red-500 pl-2"><code class="font-mono">VITE_SERVER_URL</code> is declared twice: once in the zod schema, once by hand in <code class="font-mono">vite-env.d.ts</code>.</p>
+                  <p class="mt-3 border-l-2 border-amber-500 pl-2">A browser module reads <code class="font-mono">process.env</code> for the kill switch. Verify it resolves in a Vite client bundle before trusting it.</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="rounded-lg border border-slate-200 bg-white p-4">
+              <p class="mb-3 text-xs uppercase tracking-wider text-slate-500">After — deep: schema is the only declaration</p>
+              <div class="flex h-[240px] items-end gap-6 px-4">
+                <div class="flex-1">
+                  <div class="rounded-t border-2 border-emerald-600 bg-emerald-50 px-2 py-2 text-center text-[11px] text-emerald-800" style="height:52px">
+                    interface<br/><span class="text-[10px]">env.VITE_SERVER_URL</span>
+                  </div>
+                  <div class="deep rounded-b border-2 border-t-0 border-slate-900 px-2 py-2 text-center text-[11px] text-slate-300" style="height:168px">
+                    implementation<br/><span class="text-[10px] opacity-70">schema · types derived<br/>from the schema ·<br/>build-time switch<br/>scoped to the server</span>
+                  </div>
+                  <p class="mt-2 text-center text-[10px] uppercase tracking-wider text-slate-500">env/web — deep</p>
+                </div>
+                <div class="flex-1 text-[11px] text-slate-600">
+                  <p class="border-l-2 border-emerald-500 pl-2">Derive <code class="font-mono">ImportMetaEnv</code> from the zod schema, so one edit changes both.</p>
+                  <p class="mt-3 border-l-2 border-emerald-500 pl-2">Keep the escape hatch on the server side only, where <code class="font-mono">process.env</code> genuinely exists.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid md:grid-cols-2 gap-6 text-sm">
+            <div>
+              <p class="text-xs uppercase tracking-wider text-slate-500">Problem</p>
+              <p class="mt-1">One module serves two environments with one escape hatch, and states the same variable twice in two languages.</p>
+            </div>
+            <div>
+              <p class="text-xs uppercase tracking-wider text-slate-500">Solution</p>
+              <p class="mt-1">Derive the ambient types from the schema, and scope <code class="font-mono text-xs">SKIP_ENV_VALIDATION</code> to the server module.</p>
+            </div>
+          </div>
+
+          <div class="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+            Marked speculative: candidate 1 removes most of the pressure on <code class="font-mono">SKIP_ENV_VALIDATION</code>. Revisit after it lands.
+          </div>
+
+          <ul class="grid sm:grid-cols-2 gap-x-8 gap-y-1 text-sm text-slate-700">
+            <li>· One declaration per variable</li>
+            <li>· Interface shrinks, implementation absorbs</li>
+            <li>· Browser module stops touching <code class="font-mono text-xs">process</code></li>
+          </ul>
+        </article>
+
+      </section>
+
+      <!-- ============ HOUSEKEEPING ============ -->
+      <section class="border-t border-stone-200 pt-10">
+        <h2 class="font-serif text-xl">Not candidates — small untruths in the plumbing</h2>
+        <p class="mt-1 text-sm text-slate-500">Each is a dependency or option that claims something the code does not do. No diagram earns its place; fold them into whichever candidate you take first.</p>
+        <ul class="mt-4 space-y-1.5 text-sm text-slate-700">
+          <li>· <code class="font-mono text-xs">apps/web</code> depends on <code class="font-mono text-xs">@hookform/resolvers</code> — the app uses <code class="font-mono text-xs">@tanstack/react-form</code>. Unused.</li>
+          <li>· <code class="font-mono text-xs">dotenv</code> is a dependency of <code class="font-mono text-xs">apps/web</code>, <code class="font-mono text-xs">packages/auth</code>, and the root. None import it.</li>
+          <li>· <code class="font-mono text-xs">zod</code> is a dependency of <code class="font-mono text-xs">packages/db</code> and <code class="font-mono text-xs">packages/auth</code>. Neither imports it.</li>
+          <li>· <code class="font-mono text-xs">apps/server/tsconfig.json</code> sets <code class="font-mono text-xs">jsx</code> and <code class="font-mono text-xs">jsxImportSource: hono/jsx</code>. The server has no JSX.</li>
+          <li>· The root <code class="font-mono text-xs">package.json</code> lists <code class="font-mono text-xs">workspaces</code>, which pnpm ignores in favour of <code class="font-mono text-xs">pnpm-workspace.yaml</code>.</li>
+          <li>· <code class="font-mono text-xs">README.md</code> omits <code class="font-mono text-xs">packages/env</code> and <code class="font-mono text-xs">packages/config</code> from the project structure.</li>
+        </ul>
+      </section>
+
+      <!-- ============ TOP RECOMMENDATION ============ -->
+      <section id="top-recommendation" class="rounded-xl border-2 border-slate-900 bg-white p-8">
+        <p class="text-xs uppercase tracking-wider text-slate-500">Top recommendation</p>
+        <h2 class="mt-2 font-serif text-3xl"><a href="#c1" class="underline decoration-emerald-500 decoration-2 underline-offset-4">Give the server a composition root</a></h2>
+        <p class="mt-4 max-w-2xl text-slate-700">
+          It is the root cause under three other candidates. Once configuration is passed in rather than read at import, the <code class="font-mono text-sm">drizzle.config.ts</code> workaround (4) has an obvious home, <code class="font-mono text-sm">SKIP_ENV_VALIDATION</code> stops being load-bearing (6), and the workspace gets a seam it can test through (5) — which it has none of today.
+        </p>
+        <p class="mt-3 max-w-2xl text-sm text-slate-600">
+          It also fixes a live defect on its own: <code class="font-mono text-xs">@glidepath/auth</code> constructs a second connection pool while the one exported by <code class="font-mono text-xs">@glidepath/db</code> is never used.
+        </p>
+      </section>
+
+    </main>
+  </body>
+</html>
