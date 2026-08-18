@@ -16,6 +16,10 @@ updates:
       prod-minor-patch:
         dependency-type: production
         update-types: [minor, patch]
+    # Keep the Node.js types on the runtime major. Move both versions together.
+    ignore:
+      - dependency-name: "@types/node"
+        update-types: [version-update:semver-major]
 
   # Without this the SHA pins rot.
   - package-ecosystem: github-actions
@@ -28,7 +32,8 @@ updates:
     schedule:
       interval: weekly
     # The runtime major moves when we decide, not when a tag appears. Patch and
-    # minor still arrive weekly. Bump `FROM`, `.nvmrc`, and `engines` together.
+    # minor still arrive weekly. Bump `FROM`, `.nvmrc`, `engines`, and
+    # `@types/node` together.
     ignore:
       - dependency-name: node
         update-types: [version-update:semver-major]
