@@ -18,11 +18,13 @@ engineStrict: true
 verifyDepsBeforeRun: true
 verifyStoreIntegrity: true
 
-# Drop this once upstream ships the fix. Scoped to the offending path — a bare
-# esbuild override would drag vite off the range it declares.
-#   esbuild <=0.24.2  GHSA-67mh-4wv8-2f99 (via @esbuild-kit, in drizzle-kit)
+# Drop these once upstream ships the fixes. Each override stays on the
+# offending path so it does not change unrelated dependency versions.
 overrides:
+  # esbuild <=0.24.2  GHSA-67mh-4wv8-2f99 (via @esbuild-kit, in drizzle-kit)
   "@esbuild-kit/core-utils>esbuild": ^0.25.12
+  # nanoid <3.3.18  GHSA-2v37-7h3g-55p8 (via postcss)
+  "postcss>nanoid": ^3.3.18
 
 catalog:
   dotenv: ^17.4.2
